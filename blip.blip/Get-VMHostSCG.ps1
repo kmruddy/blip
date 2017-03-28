@@ -20,14 +20,14 @@
 		See the enclosed readme.md for more information on why these have been excluded.
 
 	.Example
-		$results = Get-VMHost generic-host1.domain.local | Get-VMHostStigValues -NTPServers "ntp1.domain.local","ntp2.domain.local"
+		$results = Get-VMHost generic-host1.domain.local | Get-VMHostSCG -NTPServers "ntp1.domain.local","ntp2.domain.local"
 		
 		Description
 		-----------
 		Runs the STIG check for all documented findings on generic-host1, using ntp1.domain.local and ntp2.domain.local as the authorized time sources
 
 	.Example
-		$results = Get-VMHost | Get-VMHostStigValues -Exclude ESXI-06-000053
+		$results = Get-VMHost | Get-VMHostSCG -Exclude ESXI-06-000053
 		
 		Description
 		-----------
@@ -60,7 +60,7 @@
 	.Parameter Path
 		The path where the exported results should be placed. File name will be generated automatically
 #>
-Function Get-VMHostStigValues {
+Function Get-VMHostSCG {
 	[CmdletBinding(DefaultParameterSetName="Normal")]
 	Param (
 		# Available to all Parameter Sets

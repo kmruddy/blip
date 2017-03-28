@@ -19,14 +19,14 @@
 		See the enclosed readme.md for more information on why these have been excluded.
 
 	.Example
-		$results = Get-VM | Get-VMStigValues -Exclude VMCH-06-000035
+		$results = Get-VM | Get-VMSCG -Exclude VMCH-06-000035
 		
 		Description
 		-----------
 		Runs the STIG check for all documented findings except for 'VMCH-06-000035'
 
 	.Example
-		$results = Get-VM generic-vm2 | Get-VMStigValues -All
+		$results = Get-VM generic-vm2 | Get-VMSCG -All
 		
 		Description
 		-----------
@@ -47,7 +47,7 @@
 	.Parameter Path
 		The path where the exported results should be placed. File name will be generated automatically
 #>
-Function Get-VMStigValues { 
+Function Get-VMSCG { 
 	[CmdletBinding(DefaultParameterSetName="Normal")]
 	Param (
 		[Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=0)]
