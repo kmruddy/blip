@@ -24,7 +24,7 @@
 		See the enclosed readme.md for more information on why these have been excluded.
 			
 	.Example
-		Set-vCenterStigResults
+		Set-vCenterSCG
 
 		Description
 		-----------
@@ -39,7 +39,7 @@
 	.Parameter RunAsync
 		Indicates that the command returns immediately without waiting for the task to complete.
 #>
-Function Set-vCenterStigVaResults {
+Function Set-vCenterSCG {
 	[CmdletBinding()]
 	Param (
 		[Parameter(ValueFromPipeline=$true)]

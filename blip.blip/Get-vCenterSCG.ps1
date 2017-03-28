@@ -20,21 +20,21 @@
 		See the enclosed readme.md for more information on why these have been excluded.
 
 	.Example
-		$results = Get-vCenterStigValues -Server vCenter1.domain.local
+		$results = Get-vCenterSCG -Server vCenter1.domain.local
 		
 		Description
 		-----------
 		Runs the STIG check for all documented findings on vCenter Server vCenter1.domain.local
 
 	.Example
-		$results = Get-vCenterStigValues -Exclude VCWN-06-000048
+		$results = Get-vCenterSCG -Exclude VCWN-06-000048
 		
 		Description
 		-----------
 		Runs the STIG check for all documented findings except 'VCWN-06-000048' on all connected vCenter Servers
 
 	.Example
-		Get-vCenterStigValues -Exclude VCWN-06-000048 -Export -Path C:\Temp\STIG
+		Get-vCenterSCG -Exclude VCWN-06-000048 -Export -Path C:\Temp\STIG
 		
 		Description
 		-----------
@@ -55,7 +55,7 @@
 	.Parameter Path
 		The path where the exported results should be placed. File name will be generated automatically
 #>
-Function Get-vCenterStigValues {
+Function Get-vCenterSCG {
 	[CmdletBinding(DefaultParameterSetName="None")]
 	Param (
 		[Parameter(Mandatory=$false,ValueFromPipeline=$true,Position=0)]

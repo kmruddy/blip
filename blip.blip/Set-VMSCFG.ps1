@@ -23,7 +23,7 @@
 		See the enclosed readme.md for more information on why these have been excluded.
 	
 	.Example
-		Get-Cluster sample-cluster | Get-VM | Set-VMStigValues -Exclude VMCH-06-000035
+		Get-Cluster sample-cluster | Get-VM | Set-VMSCG -Exclude VMCH-06-000035
 
 		Description
 		-----------
@@ -38,7 +38,7 @@
 	.Parameter RunAsync
 		Indicates that the command returns immediately without waiting for the task to complete.
 #>
-Function Set-VMStigValues {
+Function Set-VMSCG {
 	[CmdletBinding()]
 	Param (
 		[Parameter(Mandatory=$true,ValueFromPipeline=$true)]
@@ -90,4 +90,4 @@ Function Set-VMStigValues {
 	}
 }
 
-New-Alias -Force -Name Update-VMStigValues -Value Set-VMStigValues
+New-Alias -Force -Name Update-VMSCG -Value Set-VMSCG
