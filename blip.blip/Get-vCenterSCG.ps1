@@ -1,23 +1,13 @@
 <#
 	.Description
-		This cmdlet checks STIG values from the module location for virtual machines and returns a list of non-compliant values
+		This cmdlet checks vSphere Security Configuration Guideline (SCG) values from the module location for virtual machines and returns a list of non-compliant values
 
 	.Synopsis
-		This cmdlet checks virtual machines STIG compliance values
+		This cmdlet checks virtual machines SCG compliance values
 
 	.Notes
 		Author: Steve Kaplan (steve@intolerable.net)
 		Version History:
-			2016-DEC-27 - 1.0.0; Initial release
-
-
-		The following STIG Findings cannot be checked via PowerCLI, and will require being checked manual:
-		
-		-   Category I: VCWN-06-000027
-		-  Category II: VCWN-06-000001, VCWN-06-000002, VCWN-06-000003, VCWN-06-000004, VCWN-06-000005, VCWN-06-000009, VCWN-06-000010, VCWN-06-000020, VCWN-06-000022, VCWN-06-000026, VCWN-06-000028, VCWN-06-000029, VCWN-06-000030, VCWN-06-000032, VCWN-06-000033, VCWN-06-000034, VCWN-06-000035, VCWN-06-000039, VCWN-06-000040, VCWN-06-000041, VCWN-06-000042, VCWN-06-000043, VCWN-06-000045, VCWN-06-000046, VCWN-06-000047, VCWN-06-100005
-		- Category III: VCWN-06-000025, VCWN-06-000031
-
-		See the enclosed readme.md for more information on why these have been excluded.
 
 	.Example
 		$results = Get-vCenterSCG -Server vCenter1.domain.local
@@ -27,18 +17,18 @@
 		Runs the STIG check for all documented findings on vCenter Server vCenter1.domain.local
 
 	.Example
-		$results = Get-vCenterSCG -Exclude VCWN-06-000048
+		$results = Get-vCenterSCG -Exclude vNetwork.limit-network-healthcheck
 		
 		Description
 		-----------
-		Runs the STIG check for all documented findings except 'VCWN-06-000048' on all connected vCenter Servers
+		Runs the STIG check for all documented findings except 'vNetwork.limit-network-healthcheck' on all connected vCenter Servers
 
 	.Example
-		Get-vCenterSCG -Exclude VCWN-06-000048 -Export -Path C:\Temp\STIG
+		Get-vCenterSCG -Exclude vNetwork.limit-network-healthcheck -Export -Path C:\Temp\STIG
 		
 		Description
 		-----------
-		Runs the STIG check for all documented findings except 'VCWN-06-000048' on all connected vCenter Servers and export the results to a file in C:\Temp\STIG
+		Runs the STIG check for all documented findings except 'vNetwork.limit-network-healthcheck' on all connected vCenter Servers and export the results to a file in C:\Temp\STIG
 
 	.Parameter Server
 		Specifies connected vCenter Server(s) to check STIG values on. If no value is passed to this parameter, the command runs on the default servers. For more information about default servers, see the description of Connect-VIServer.
@@ -74,8 +64,8 @@ Function Get-vCenterSCG {
 	Begin {
 		if ($Exclude -ne $null) { Write-Warning "The following STIG ID's will be excluded from being checked: $($Exclude -join ', ')" }
 
-		$activity = "Checking vCenter Server (Windows) STIG Values"
-		$STIGType = "vCenter"
+		$activity = "Checking vCenter Server Secuirity Configuration Guidelines"
+		$EntityType = "vCenter"
 		if ($Export) { $ExportResults = @() }
 	}
 
@@ -92,8 +82,8 @@ Function Get-vCenterSCG {
 		foreach ($entity in $Servers) {
 			$results = @()
 
-			# Advanced Option Checks (Many findings contained)
-			$results += Test-Checklist -Type vCenter
+			# Advanced Option Checks (Many findings contained) -- DISA STIG Only
+			#$results += Test-Checklist -Type vCenter
 
 			# Network Configurations 
 			Write-Progress -Activity $activity -Status $entity.Name -CurrentOperation "Querying for all Distributed vSwitches"
@@ -107,38 +97,40 @@ Function Get-vCenterSCG {
 		
 			# Function to simplify Policy Checking
 			Function Test-DistributedNetPolicy {
-				Param ($Finding,$Category,$Setting,$Policy)
+				Param ($GuidelineID,$RiskProfiles,$StigID,$StigCategory,$Setting,$Policy)
 				
 				$impacted = $policies | Where-Object { $_.$Policy -eq $true }
-				Test-Finding -Finding $Finding -Category $Category -Setting "$($Setting) Policy: Distributed Virtual Portgroup" -Expected 0 -Current $impacted.count -Impacted ($impacted.Name -join ', ') -Remediation "Automated"
+				Test-Guideline -GuidelineID $GuidelineID -RiskProfiles $RiskProfiles -StigID $StigID -StigCategory $StigCategory -StigCategory $Category -Setting "$($Setting) Policy: Distributed Virtual Portgroup" -Expected 0 -Current $impacted.count -Impacted ($impacted.Name -join ', ') -Remediation "Automated"
 			}
 
 			# VCWN-06-000014 - CAT I - MAC Address Change Policy on Distribued Virtual Portgroups
-			$results += Test-DistributedNetPolicy -Finding "VCWN-06-000014" -Category "I" -Setting "MAC Address Change" -Policy "MacChanges"
+			$results += Test-DistributedNetPolicy -GuidelineID "vNetwork.reject-mac-changes-dvportgroup" -RiskProfiles "1,2,3" -StigID "VCWN-06-000014" -StigCategory "I" -Setting "MAC Address Change" -Policy "MacChanges"
 
 			# VCWN-06-000013 - CAT II - Promiscuous Mode Policy on Distributed Virtual Portgroup
-			$results += Test-DistributedNetPolicy -Finding "VCWN-06-000013" -Category "II" -Setting "Allow Promiscuous Mode" -Policy "AllowPromiscuous"
+			$results += Test-DistributedNetPolicy -GuidelineID "vNetwork.reject-forged-transmit-dvportgroup" -RiskProfiles "1,2,3" -StigID "VCWN-06-000013" -StigCategory "II" -Setting "Allow Promiscuous Mode" -Policy "AllowPromiscuous"
 			
 			# VCWN-06-000015  - CAT II - Forged Transmits Policy on Distributed Virtual Portgroup
-			$results += Test-DistributedNetPolicy -Finding "VCWN-06-000015" -Category "II" -Setting "Forged Transmits" -Policy "ForgedTransmits"
-
-			# VCWN-06-000007 - CAT II - Network I/O Control Enablement
-			$nioc = $VDSwitches | Where-Object { $_.ExtensionData.Config.NetworkResourceManagementEnabled -eq $false }
-			$results += Test-Finding -Finding "VCWN-06-000007" -Category "II" -Setting "Network I/O Control Enabled" -Expected 0 -Current $nioc.count -Impacted ($nioc.Name -join ', ') -Remediation "Automated"
+			$results += Test-DistributedNetPolicy -GuidelineID "vNetwork.reject-promiscuous-mode-dvportgroup" -RiskProfiles "1,2,3" -StigID "VCWN-06-000015" -StigCategory "II" -Setting "Forged Transmits" -Policy "ForgedTransmits"
 
 			# VCWN-06-000016 - CAT II - NetFlow Collector Configuration for Distributed vSwitches and Portgroups
 			$VDSNetFlow = $VDSwitches | Where-Object { $_.ExtensionData.config.IpfixConfig.CollectorIpAddress }
 			$VDPNetFlow = $VDPortgroups | Where-Object { $_.ExtensionData.Config.defaultPortConfig.ipfixEnabled.Value }
-			$results += Test-Finding -Finding "VCWN-06-000016" -Category "II" -Setting "Distributed vSwitch NetFlow Configured"   -Expected 0 -Current $VDSNetFlow.count -Impacted $VDSNetFlow -Remediation "Automated"
-			$results += Test-Finding -Finding "VCWN-06-000016" -Category "II" -Setting "Distributed Portgroup NetFlow Configured" -Expected 0 -Current $VDSNetFlow.count -Impacted $VDPNetFlow -Remediation "Automated"
+			$results += Test-Guidance -GuidelineID "vNetwork.restrict-netflow-usage" -RiskProfiles "1,2,3" -StigID "VCWN-06-000016" -StigCategory "II" -Setting "Distributed vSwitch NetFlow Configured"   -Expected 0 -Current $VDSNetFlow.count -Impacted $VDSNetFlow -Remediation "Automated"
+			$results += Test-Guidance -GuidelineID "vNetwork.restrict-netflow-usage" -RiskProfiles "1,2,3" -StigID "VCWN-06-000016" -StigCategory "II" -Setting "Distributed Portgroup NetFlow Configured" -Expected 0 -Current $VDSNetFlow.count -Impacted $VDPNetFlow -Remediation "Automated"
+
+			<# Add back with -DISA flag
+			#VCWN-06-000007 - CAT II - Network I/O Control Enablement
+			$nioc = $VDSwitches | Where-Object { $_.ExtensionData.Config.NetworkResourceManagementEnabled -eq $false }
+			$results += Test-Guidance -StigID "VCWN-06-000007" -StigCategory "II" -Setting "Network I/O Control Enabled" -Expected 0 -Current $nioc.count -Impacted ($nioc.Name -join ', ') -Remediation "Automated"
 
 			# VCWN-06-000018 - CAT II - Native VLAN Configuration
 			$nativevlan = $VDPortgroups | Where-Object { $_.VlanConfiguration.VlanId -eq $null }
-			$results += Test-Finding -Finding "VCWN-06-000018" -Category "II" -Setting "Native VLAN Configured" -Expected 0 -Current $nativevlan.count -Impacted ($nativevlan.Name -join ', ') -Remediation "Manual"
+			$results += Test-Guidance -StigID "VCWN-06-000018" -StigCategory "II" -Setting "Native VLAN Configured" -Expected 0 -Current $nativevlan.count -Impacted ($nativevlan.Name -join ', ') -Remediation "Manual"
 
 			# VCWN-06-000019 - CAT II - Virtual Guest Tagging Configuration
 			$guesttag = $VDPortgroups | Where-Object { $_.VlanConfiguration.VlanId -eq 4095 }
-			$results += Test-Finding -Finding "VCWN-06-000019" -Category "II" -Setting "Virtual Guest Tagging Configured" -Expected 0 -Current $guesttag.count -Impacted ($guesttag.Name -join ', ') -Remediation "Manual"
+			$results += Test-Guidance -StigID "VCWN-06-000019" -StigCategory "II" -Setting "Virtual Guest Tagging Configured" -Expected 0 -Current $guesttag.count -Impacted ($guesttag.Name -join ', ') -Remediation "Manual"
+			#>
 
 			# VCWN-06-000012 - CAT III - Distributed vSwitch Health Check Enablement
 			$impacted = @()
@@ -151,7 +143,7 @@ Function Get-vCenterSCG {
 			    if ($enabled -eq $true) { $impacted += $VDSwitch.Name }
 			}
 			
-			$results += Test-Finding -Finding "VCWN-06-000012" -Category "III" -Setting "Distributed vSwitch Health Check Enabled" -Expected 0 -Current $impacted.count -Impacted ($impacted -join ', ') -Remediation "Automated"
+			$results += Test-Guidance -GuidelineID "vNetwork.limit-network-healthcheck" -RiskProfiles "1,2,3" -StigID "VCWN-06-000012" -StigCategory "III" -Setting "Distributed vSwitch Health Check Enabled" -Expected 0 -Current $impacted.count -Impacted ($impacted -join ', ') -Remediation "Automated"
 
 			# VCWN-06-000017 - CAT III - Distributed Portgroup Port Override Policy Configuration
 			$impacted = @()
@@ -159,9 +151,9 @@ Function Get-vCenterSCG {
 				$result = Test-PortgroupOverrides
 				if ($result) { $Impacted += $result.Name }
 			}
-			$results += Test-Finding -Finding "VCWN-06-000017" -Category "III" -Setting "Distributed Portgroup Override Policy Confiugration" -Expected 0 -Current $impacted.count -Impacted ($impacted -join ', ') -Remediation "Automated"
+			$results += Test-Guidance -GuidelineID "vNetwork.restrict-port-level-overrides" -RiskProfiles "1,2,3" -StigID "VCWN-06-000017" -StigCategory "III" -Setting "Distributed Portgroup Override Policy Confiugration" -Expected 0 -Current $impacted.count -Impacted ($impacted -join ', ') -Remediation "Automated"
 
-			# Alarm Definition Validation
+			<# Alarm Definition Validation -- Add in for DISA supportability
 			Write-Progress -Activity $activity -Status $entity.Name -CurrentOperation "Querying for all Alarm Definitions"
 			$alarms = Get-AlarmDefinition -Server $entity
 			$events = $alarms.ExtensionData.Info.Expression.Expression
@@ -172,17 +164,18 @@ Function Get-vCenterSCG {
 				$definition = $events | Where-Object { $_.EventTypeId -eq $TypeId }
 				if ($definition.count -ge 1) { $check = $true }
 				else { $check = $false }
-				Test-Finding -Finding $Finding -Category $Category -Setting "Alarm Definition: $($Type)" -Expected $true -Current $check -Remediation "Automated"
+				Test-Guidance -StigID $Finding -StigCategory $Category -Setting "Alarm Definition: $($Type)" -Expected $true -Current $check -Remediation "Automated"
 			}
 
 			# VCWN-06-000048, 49, 50 - CAT II - Alarm Definitions for Permissions
-			$results += Test-AlarmDefintion -Finding "VCWN-06-000048" -Category "II" -TypeId "Vim.Event.PermissionAddedEvent"   -Type "Permissions Additions"
-			$results += Test-AlarmDefintion -Finding "VCWN-06-000049" -Category "II" -TypeId "Vim.Event.PermissionRemovedEvent" -Type "Permissions Removal"
-			$results += Test-AlarmDefintion -Finding "VCWN-06-000048" -Category "II" -TypeId "Vim.Event.PermissionUpdatedEvent" -Type "Permissions Updates"
+			$results += Test-AlarmDefintion -StigID "VCWN-06-000048" -StigCategory "II" -TypeId "Vim.Event.PermissionAddedEvent"   -Type "Permissions Additions"
+			$results += Test-AlarmDefintion -StigID "VCWN-06-000049" -StigCategory "II" -TypeId "Vim.Event.PermissionRemovedEvent" -Type "Permissions Removal"
+			$results += Test-AlarmDefintion -StigID "VCWN-06-000048" -StigCategory "II" -TypeId "Vim.Event.PermissionUpdatedEvent" -Type "Permissions Updates"
 
 			# VCWN-06-000008 - CAT III - Remote Syslog connectivity
-			$results += Test-AlarmDefintion -Finding "VCWN-06-000008" -Category "III" -TypeId "esx.problem.vmsyslogd.remote.failure" -Type "Remote Syslog Connectivity"
-			
+			$results += Test-AlarmDefintion -StigID "VCWN-06-000008" -StigCategory "III" -TypeId "esx.problem.vmsyslogd.remote.failure" -Type "Remote Syslog Connectivity"
+			#>
+
 			# Return the results
 			if ($Export) { $ExportResults += $results }
 			else { $results }

@@ -66,7 +66,7 @@ Function Get-VMSCG {
 	Begin {
 		if ($Exclude -ne $null) { Write-Warning "The following STIG ID's will be excluded from being checked: $($Exclude -join ', ')" }
 	 	$activity = "Checking vSphere 6.0 Virtual Machine STIG"
-	 	$STIGType = "VM"
+	 	$EntityType = "VM"
 	 	if ($Export) { $ExportResults = @() }
 	 }
 

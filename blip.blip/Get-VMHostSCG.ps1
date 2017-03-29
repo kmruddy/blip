@@ -84,7 +84,7 @@ Function Get-VMHostSCG {
 		if ($Exclude -ne $null) { Write-Warning "The following STIG ID's will be excluded from being checked: $($Exclude -join ', ')" }
 		if ($NTPServers -eq $null) { Write-Warning "The following findings will flag as non-compliant due to the -NTPServers flag having no values passed: ESXI-06-000046, ESXI-06-100046. Please read the notes provided in the impacted field for the hosts!" }
 		$activity = "Checking vSphere 6.0 ESXi Host STIG"
-		$STIGType = "VMHost"
+		$EntityType = "VMHost"
 		if ($Export) { $ExportResults = @() }
 	}
 
@@ -109,7 +109,7 @@ Function Get-VMHostSCG {
 			$swaccept = $esxcli.software.acceptance.get.Invoke()
 			if ($swaccept -eq "CommunitySupported") { $check = $false }
 			else { $check = $true }
-			$results +=  Test-MultipleFindings -Category "I" -Setting "Image Profile Software Acceptance Policy" -Expected $true -Current $check -Remediation "Automated"
+			$results +=  Test-Findings -Category "I" -Setting "Image Profile Software Acceptance Policy" -Expected $true -Current $check -Remediation "Automated"
 
 			# ESXI-06-000045 - CAT II - Persistent Log Storage Location
 			$syslog = $esxcli.system.syslog.config.get.Invoke()
