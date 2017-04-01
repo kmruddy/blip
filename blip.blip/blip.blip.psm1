@@ -32,16 +32,16 @@ Function Test-Checklist {
 	if ($Type -eq "vCenter") { $checklist = Import-Csv -Path "$FindingsHome\vcenter-advopts.csv" }
 
 	for ($i = 0; $i -lt $checklist.count; $i++) {
-		$stig = $checklist[$i]
-		if ((Test-Exclusion $Exclude $stig.Finding) -eq $false) {
-			$current = "Checking current value against $($stig.Finding)"
+		$guideline = $checklist[$i]
+		if ((Test-Exclusion $Exclude $guideline.Finding) -eq $false) {
+			$current = "Checking current value against $($guideline.Finding)"
 			$percent = ($i / $checklist.count)*100
 			Write-Progress -Activity $activity -Status $entity.Name -CurrentOperation $current -PercentComplete $percent
 
 			# Checking the posture of the virtual machine against the checklist
-			$advopt = $advopts | Where-Object { $_.Name -eq $stig.Key }
+			$advopt = $advopts | Where-Object { $_.Name -eq $guideline.Key }
 			if (!$advopt) { $impacted = "The advanced setting has no value configured" }
-			$result += Test-Finding -Finding $stig.Finding -Category $stig.Category -Setting $stig.Key -Expected $stig.value -Current $advopt.Value -Impacted $impacted -Remediation $stig.Remediation
+			$result += Test-Finding -Finding $guideline.Finding -StigCategory $guideline.Category -Setting $guideline.Key -Expected $guideline.value -Current $advopt.Value -Impacted $impacted -Remediation $guideline.Remediation
 		}
 	}
 	$result
@@ -51,6 +51,8 @@ Function Test-Guidance {
 	Param (
 		$GuidelineID,
 		$RiskProfiles,
+		$StigID,
+		$StigCategory,
 		$Setting,
 		$Expected,
 		$Current,
@@ -58,8 +60,8 @@ Function Test-Guidance {
 		$Impacted,
 		$Remediation
 	) 
-	
-	$exclusion = Test-Exclusion $Exclude $Finding
+
+	$exclusion = Test-Exclusion $Exclude $GuidelineID
 	if ($exclusion -eq $false) {
 		Write-Progress -Activity $activity -Status "$($entity.Name)" -CurrentOperation $Setting
 		if ($Expected -eq $Current) { $Compliance = $true }
@@ -68,20 +70,22 @@ Function Test-Guidance {
 		#Creating PowerShell Object
 		$result = New-Object PSObject
 		Add-Member -MemberType NoteProperty -InputObject $result -Name Name 		-Value $entity.Name
-		Add-Member -MemberType NoteProperty -InputObject $result -Name Type 		-Value $STIGType
+		Add-Member -MemberType NoteProperty -InputObject $result -Name Type 		-Value $EntityType
 		Add-Member -MemberType NoteProperty -InputObject $result -Name GuidelineID 	-Value $GuidelineID
 		Add-Member -MemberType NoteProperty -InputObject $result -Name RiskProfiles	-Value $RiskProfiles
+		Add-Member -MemberType NoteProperty -InputObject $result -Name StigID		-Value $StigID
+		Add-Member -MemberType NoteProperty -InputObject $result -Name StigCategory	-Value $StigCategory
 		Add-Member -MemberType NoteProperty -InputObject $result -Name Setting		-Value $Setting
 		Add-Member -MemberType NoteProperty -InputObject $result -Name Expected		-Value $Expected
 		Add-Member -MemberType NoteProperty -InputObject $result -Name Current 		-Value $Current
 		Add-Member -MemberType NoteProperty -InputObject $result -Name Compliant	-Value $Compliance
-		Add-Member -MemberType NoteProperty -InputObject $result -Name Impacted		-Value $Impacted
 		Add-Member -MemberType NoteProperty -InputObject $result -Name Remediation	-Value $Remediation
+		Add-Member -MemberType NoteProperty -InputObject $result -Name Impacted		-Value $Impacted
 
 		#Verifying whether to return the result
 		if ($Compliance -eq $false -or $All -eq $true) {
 			#Setting up the default view for the custom powershell object being returned
-			$defaultProps = @("Name","Type","GuidelineID","RiskProfile","Compliant")
+			$defaultProps = @("Name","Type","GuidelineID","RiskProfile","Compliant","Remediation")
 			$defaultDisplayPropSet = New-Object System.Management.Automation.PSPropertySet("DefaultDisplayPropertySet",[string[]]$defaultProps)
 			$defaultView = [System.Management.Automation.PSMemberInfo[]]@($defaultDisplayPropSet)
 			$result | Add-Member MemberSet PSStandardMembers $defaultView
